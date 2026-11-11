@@ -1,0 +1,823 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>pointy — point at it, say it, ship it</title>
+<meta name="description" content="Draw on any screen, talk through the change, and your coding agent gets a brief that names the exact components. A Mac app + browser extension." />
+<meta property="og:title" content="pointy — point at it, say it, ship it" />
+<meta property="og:description" content="Draw on your UI and talk. Claude Code gets a perfect brief." />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
+<style>
+  /* Mono & lime — the app's own palette. */
+  :root {
+    --bg: #fafaf8; --ink: #111; --ink-2: #5e5e5e; --ink-3: #9e9e9e; --line: #e7e7e3;
+    --card: #fff; --lime: #c8f53c; --lime-deep: #b5e322; --green: #16a34a; --red: #ff5f57;
+    --display: "Bricolage Grotesque", ui-rounded, system-ui, sans-serif;
+    --body: Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sticker: 2px solid var(--ink);
+    --pop: 3px 3px 0 var(--ink);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 var(--body); -webkit-font-smoothing: antialiased;
+         background-image: radial-gradient(circle, #d9d9d4 1px, transparent 1.2px); background-size: 22px 22px; overflow-x: hidden; }
+  a { color: inherit; }
+  .wrap { width: min(1120px, calc(100% - 40px)); margin: 0 auto; }
+
+  /* ---------------------------------------------------------- menu bar */
+  .menubar { position: sticky; top: 0; z-index: 50; height: 44px; display: flex; align-items: center; gap: 22px;
+             padding: 0 20px; background: rgba(250,250,248,.82); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+             border-bottom: 1px solid var(--line); font-size: 14px; }
+  .brand { display: flex; align-items: center; gap: 9px; font: 700 17px/1 var(--display); letter-spacing: -.02em; text-decoration: none; }
+  .menubar nav { display: flex; gap: 18px; color: var(--ink-2); }
+  .menubar nav a { text-decoration: none; }
+  .menubar nav a:hover { color: var(--ink); }
+  .tray { margin-left: auto; display: flex; align-items: center; gap: 14px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .tray svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  .tray .me { display: grid; place-items: center; }
+  .tray .me svg { width: 20px; height: 20px; stroke: none; }
+  .tray .get { color: var(--ink); font-weight: 600; text-decoration: none; }
+  .coffee-link { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); text-decoration: none; }
+  .coffee-link:hover { color: var(--ink); }
+  @media (max-width: 720px) { .coffee-link span { display: none; } }
+  @media (max-width: 720px) { .menubar nav, .tray .sys { display: none; } }
+
+  /* ------------------------------------------------------------- shared */
+  .h1, .h2 { font-family: var(--display); font-weight: 800; letter-spacing: -.035em; line-height: .98; margin: 0; }
+  .h1 { font-size: clamp(46px, 7.6vw, 92px); }
+  .h2 { font-size: clamp(34px, 5vw, 58px); }
+  .dot { color: var(--lime-deep); -webkit-text-stroke: 1.5px var(--ink); }
+  .chip { display: inline-block; padding: 0 .18em .04em; margin: 0 .04em; background: var(--lime); border: 3px solid var(--ink);
+          border-radius: .2em; box-shadow: 4px 4px 0 var(--ink); transform: rotate(-2.5deg); }
+  .lede { font-size: 19px; color: var(--ink-2); max-width: 30ch; margin: 18px 0 0; }
+  .btn { display: inline-flex; align-items: center; gap: 9px; height: 50px; padding: 0 22px; border-radius: 999px; font: 600 16px/1 var(--body);
+         text-decoration: none; cursor: pointer; border: 0; transition: transform .15s ease, box-shadow .15s ease; }
+  .btn svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .btn.dark { background: var(--ink); color: #fff; box-shadow: 0 1px 0 rgba(255,255,255,.2) inset, 0 6px 18px rgba(0,0,0,.18); }
+  .btn.lime { background: var(--lime); color: var(--ink); border: var(--sticker); box-shadow: var(--pop); }
+  .btn.ghost { background: #fff; color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--line); }
+  .btn.coffee { background: #fff; color: var(--ink); border: var(--sticker); box-shadow: var(--pop); }
+  .btn.coffee svg { stroke-width: 1.9; }
+  .btn:hover { transform: translateY(-2px); }
+  .btn:active { transform: translateY(0); }
+  .small { font-size: 13px; color: var(--ink-3); }
+  section { padding: 110px 0; }
+  .center { text-align: center; }
+  .kicker { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-radius: 999px; background: #fff;
+            border: 1px solid var(--line); font-size: 13px; font-weight: 500; color: var(--ink-2); }
+  .kicker b { width: 8px; height: 8px; border-radius: 50%; background: var(--lime); box-shadow: 0 0 0 1.5px var(--ink); }
+
+  /* --------------------------------------------------------------- hero */
+  .hero { padding: 70px 0 40px; }
+  .hero-head { max-width: 900px; margin: 0 auto; }
+  .hero-head .h1 { font-size: clamp(44px, 6.6vw, 84px); }
+  .hero-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; align-items: center; }
+  /* the mascot sits on the browser window's top edge, feet over the title bar */
+  .perch { position: absolute; left: 730px; top: -122px; width: 170px; height: 160px; z-index: 6; pointer-events: none; }
+  .perch .mascot { width: 150px; position: absolute; right: 0; bottom: 0; }
+  .bubble { position: absolute; right: 150px; top: 6px; padding: 10px 16px; background: #fff; border: var(--sticker); border-radius: 18px;
+            font: 700 17px/1.1 var(--display); box-shadow: var(--pop); white-space: nowrap; }
+  .bubble::after { content: ""; position: absolute; right: -9px; bottom: 12px; width: 14px; height: 14px; background: #fff;
+                   border-right: var(--sticker); border-bottom: var(--sticker); transform: rotate(-45deg); }
+
+  /* the demo stage: a browser window with the overlay acting on it */
+  .stage-wrap { margin: 150px auto 0; position: relative; width: min(1000px, 100%); }
+  .stage-scale { width: 100%; }
+  .stage { position: relative; width: 1000px; height: 600px; transform-origin: top left; }
+  .win { position: absolute; background: var(--card); border-radius: 14px; overflow: hidden;
+         box-shadow: 0 0 0 1px rgba(0,0,0,.08), 0 30px 70px rgba(0,0,0,.14), 0 6px 18px rgba(0,0,0,.06); }
+  .titlebar { height: 38px; display: flex; align-items: center; gap: 8px; padding: 0 14px; background: #f4f4f2; border-bottom: 1px solid var(--line); }
+  .lights { display: flex; gap: 7px; } .lights i { width: 12px; height: 12px; border-radius: 50%; background: #ff5f57; }
+  .lights i:nth-child(2) { background: #febc2e; } .lights i:nth-child(3) { background: #28c840; }
+  .url { margin: 0 auto; width: 46%; height: 24px; border-radius: 7px; background: #fff; border: 1px solid var(--line);
+         display: grid; place-items: center; font-size: 12px; color: var(--ink-3); }
+  .browser { left: 90px; top: 0; width: 820px; height: 560px; cursor: crosshair; }
+  .browser[data-tool="v"] { cursor: pointer; }
+  .browser .titlebar { cursor: default; }
+  .page { position: absolute; inset: 38px 0 0 0; padding: 34px 44px; font-family: var(--body); background: #fff; }
+  .page .nav { display: flex; align-items: center; gap: 22px; font-size: 13px; color: var(--ink-3); margin-bottom: 34px; }
+  .page .logo { width: 26px; height: 26px; border-radius: 8px; background: #111; }
+  /* The demo page, before and after: each fix-* class is one line of Claude's work. */
+  .page .upgrade { margin-left: auto; padding: 6px 12px; border-radius: 8px; background: #111; color: #fff; border: 2px solid #111;
+                   transition: all .6s cubic-bezier(.2,.8,.2,1); }
+  .page.fix-cta .upgrade { background: var(--lime); color: var(--ink); padding: 7px 16px; border-radius: 999px; font-weight: 700; box-shadow: 3px 3px 0 var(--ink); }
+  .page.fix-cta .upgrade::after { content: " ✦"; }
+  .page h3 { margin: 0; font: 700 26px/1.1 var(--body); letter-spacing: -.02em; transition: font-size .7s cubic-bezier(.2,.8,.2,1), letter-spacing .7s; }
+  .page h3 em { font-style: normal; padding: 0 .08em; border-radius: .14em; transition: background-color .6s .25s, box-shadow .6s .25s; }
+  .page .head { margin-bottom: 20px; }
+  .page .tagline { margin: 0; max-height: 0; opacity: 0; overflow: hidden; font-size: 14px; color: var(--ink-2);
+                   transition: max-height .6s cubic-bezier(.2,.8,.2,1), opacity .5s .2s, margin .6s; }
+  .page.fix-head h3 { font-size: 42px; letter-spacing: -.035em; }
+  .page.fix-head h3 em { background: var(--lime); box-shadow: 0 0 0 2px var(--ink); }
+  .page.fix-head .tagline { max-height: 24px; opacity: 1; margin-top: 8px; }
+  .stats { display: flex; gap: 6px; transition: gap .7s cubic-bezier(.2,.8,.2,1); }
+  .stat { flex: 1; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--line); background: #fcfcfb; position: relative;
+          transition: all .6s cubic-bezier(.2,.8,.2,1); }
+  .stat small { display: block; font-size: 12px; color: var(--ink-3); } .stat b { font-size: 24px; letter-spacing: -.02em; transition: font-size .6s; }
+  .stat .trend { position: absolute; right: 12px; top: 12px; padding: 2px 7px; border-radius: 999px; font-size: 11px; font-weight: 700;
+                 background: rgba(22,163,74,.12); color: var(--green); opacity: 0; transform: translateY(4px) scale(.9); transition: all .45s .3s cubic-bezier(.2,.8,.2,1); }
+  .stat .trend.down { background: rgba(22,163,74,.12); }
+  .page.fix-cards .stats { gap: 22px; }
+  .page.fix-cards .stat { background: #fff; border-color: #111; box-shadow: 3px 3px 0 #111; padding: 16px 18px; }
+  .page.fix-cards .stat b { font-size: 30px; }
+  .page.fix-cards .stat .trend { opacity: 1; transform: none; }
+  .chart { margin-top: 22px; }
+  .bars { height: 96px; display: flex; align-items: flex-end; gap: 12px; padding: 0 4px; border-bottom: 1px solid var(--line); }
+  .bars i { position: relative; flex: 1; height: var(--h); border-radius: 6px 6px 0 0; background: #ececea;
+            transition: background-color .5s, height .7s cubic-bezier(.2,.8,.2,1), box-shadow .5s; }
+  .bars i span { position: absolute; left: 50%; top: -18px; transform: translateX(-50%); font-size: 10.5px; font-weight: 600; color: var(--ink-2); opacity: 0; transition: opacity .4s .3s; }
+  .days { display: flex; gap: 12px; padding: 6px 4px 0; opacity: 0; transition: opacity .4s .3s; }
+  .days span { flex: 1; text-align: center; font-size: 10.5px; color: var(--ink-3); }
+  .page.fix-chart .bars i { background: #1c1c1c; }
+  .page.fix-chart .bars i:nth-child(1) { transition-delay: 0s; } .page.fix-chart .bars i:nth-child(2) { transition-delay: .05s; }
+  .page.fix-chart .bars i:nth-child(3) { transition-delay: .1s; } .page.fix-chart .bars i:nth-child(4) { transition-delay: .15s; }
+  .page.fix-chart .bars i:nth-child(5) { transition-delay: .2s; } .page.fix-chart .bars i:nth-child(6) { transition-delay: .25s; }
+  .page.fix-chart .bars i:nth-child(7) { transition-delay: .3s; }
+  .page.fix-chart .bars i.best { background: var(--lime); box-shadow: inset 0 0 0 2px var(--ink); }
+  .page.fix-chart .bars i span, .page.fix-chart .days { opacity: 1; }
+  /* the moment a line of the brief lands: a lime pulse on what it changed */
+  .flash { animation: flash .9s ease-out; }
+  @keyframes flash { 0% { box-shadow: 0 0 0 0 rgba(200,245,60,.0); } 25% { box-shadow: 0 0 0 8px rgba(200,245,60,.75); } 100% { box-shadow: 0 0 0 16px rgba(200,245,60,0); } }
+
+  .ink { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+  .ink .under { fill: none; stroke: rgba(17,17,17,.9); stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; }
+  .ink .mark { fill: none; stroke: var(--lime); stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; }
+  .ink .sel { fill: rgba(22,163,74,.06); stroke: var(--green); stroke-width: 2; }
+  .ink .badge circle { fill: var(--lime); stroke: var(--ink); stroke-width: 1.5; }
+  .ink .badge text { font: 700 12px var(--body); fill: var(--ink); }
+  .ink .fade { transition: opacity .5s ease; }
+
+  .cursor { position: absolute; left: 0; top: 0; width: 22px; z-index: 5; pointer-events: none; filter: drop-shadow(0 2px 3px rgba(0,0,0,.25));
+            transition: transform .9s cubic-bezier(.45,.05,.25,1); }
+
+  /* the toolbar, as in the app */
+  .strip { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); height: 46px; display: flex; align-items: center; gap: 2px;
+           padding: 0 6px 0 14px; border-radius: 23px; background: rgba(30,30,32,.86); color: rgba(255,255,255,.86);
+           box-shadow: inset 0 0 0 .5px rgba(255,255,255,.16), 0 14px 34px rgba(0,0,0,.28); font: 500 12px var(--body); white-space: nowrap; }
+  .strip .rec { display: flex; align-items: center; gap: 7px; margin-right: 8px; color: rgba(255,255,255,.7); font-variant-numeric: tabular-nums; }
+  .strip .rec i { width: 7px; height: 7px; border-radius: 50%; background: #ff453a; }
+  .strip .t { display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 7px; border-radius: 10px; transition: background .2s, color .2s; cursor: pointer; }
+  .strip .t:hover { background: rgba(255,255,255,.1); } .strip .t.on:hover { background: var(--lime); }
+  .strip .done { cursor: pointer; }
+  .strip .t svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .strip kbd { font: 600 9.5px var(--body); padding: 2px 4px; border-radius: 4px; background: rgba(255,255,255,.12); color: rgba(255,255,255,.62); }
+  .strip .t.on { background: var(--lime); color: var(--ink); } .strip .t.on kbd { background: rgba(0,0,0,.12); color: var(--ink); }
+  .strip .sep { width: 1px; height: 20px; background: rgba(255,255,255,.14); margin: 0 6px; }
+  .strip .meter { display: flex; gap: 2px; align-items: center; height: 14px; margin: 0 8px; }
+  .strip .meter i { width: 2.5px; height: 3px; border-radius: 2px; background: var(--lime); transition: height .12s; }
+  .strip .done { display: inline-flex; align-items: center; gap: 5px; height: 32px; padding: 0 12px 0 9px; margin-left: 4px; border-radius: 16px;
+                 background: var(--lime); color: var(--ink); font-weight: 600; transition: transform .15s; }
+  .strip .done svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+  .strip.saved .main { display: none; } .strip .savedmsg { display: none; align-items: center; gap: 10px; padding-right: 10px; }
+  .strip.saved .savedmsg { display: flex; } .strip .main { display: flex; align-items: center; }
+  .strip .tick { width: 26px; height: 26px; border-radius: 50%; background: var(--lime); color: var(--ink); display: grid; place-items: center; }
+  .subtitle { position: absolute; left: 50%; bottom: 76px; transform: translateX(-50%); max-width: 560px; padding: 8px 16px; border-radius: 14px;
+              background: rgba(30,30,32,.86); color: #fff; font: 500 15px/1.35 var(--body); white-space: nowrap; overflow: hidden;
+              opacity: 0; transition: opacity .3s ease; box-shadow: 0 10px 26px rgba(0,0,0,.22); }
+  .subtitle.show { opacity: 1; } .subtitle .dim { color: rgba(255,255,255,.45); }
+
+  .term { right: -40px; bottom: -14px; width: 360px; height: 230px; background: #141414; color: #e6e6e6; transform: translateY(30px); opacity: 0;
+          transition: transform .6s cubic-bezier(.2,.8,.2,1), opacity .4s ease; }
+  .term.show { transform: translateY(0); opacity: 1; }
+  .term .titlebar { background: #1d1d1d; border-color: #2a2a2a; }
+  .term .titlebar span { margin: 0 auto; color: #8a8a8a; font-size: 12px; }
+  .term pre { margin: 0; padding: 14px 16px; font: 500 12.5px/1.65 var(--mono); white-space: pre-wrap; }
+  .term .p { color: var(--lime); } .term .ok { color: #3ddc97; } .term .dim { color: #7a7a7a; }
+  .try { position: absolute; left: 50%; transform: translateX(-50%); bottom: -38px; white-space: nowrap; font-size: 13px; color: var(--ink-3); display: flex; align-items: center; gap: 6px; }
+  .try kbd { font: 600 11px var(--body); padding: 2px 6px; border-radius: 5px; background: #fff; border: 1px solid var(--line); color: var(--ink); }
+
+  /* -------------------------------------------------------------- steps */
+  .steps { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 18px; align-items: center; margin-top: 56px; }
+  .step { background: #fff; border: var(--sticker); border-radius: 22px; padding: 22px; box-shadow: var(--pop); text-align: center; }
+  .step:nth-of-type(1) { transform: rotate(-1.5deg); } .step:nth-of-type(3) { transform: rotate(1deg); } .step:nth-of-type(5) { transform: rotate(-.8deg); }
+  .step .art { height: 132px; border-radius: 14px; background: #f5f5f2; display: grid; place-items: center; position: relative; overflow: hidden; }
+  .step h4 { margin: 16px 0 2px; font: 800 30px/1 var(--display); letter-spacing: -.03em; }
+  .step p { margin: 0; color: var(--ink-2); font-size: 15px; }
+  .arrow-to { width: 46px; height: 24px; fill: none; stroke: var(--ink); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+  @media (max-width: 900px) { .steps { grid-template-columns: 1fr; } .arrow-to { transform: rotate(90deg); margin: 0 auto; } }
+
+  /* --------------------------------------------------------- components */
+  .knows { display: grid; grid-template-columns: 1fr auto 1fr; gap: 26px; align-items: center; margin-top: 54px; }
+  .shot, .brief { background: #fff; border-radius: 18px; box-shadow: 0 0 0 1px rgba(0,0,0,.07), 0 20px 50px rgba(0,0,0,.08); padding: 26px; position: relative; }
+  .shot .row { display: flex; gap: 12px; }
+  .shot .stat { padding: 14px; }
+  /* a lime mark with its black edge, as the overlay draws it */
+  .drawn { position: absolute; inset: -10px; border: 3.5px solid var(--lime); border-radius: 15px; pointer-events: none;
+           box-shadow: 0 0 0 2px var(--ink), inset 0 0 0 2px var(--ink); }
+  .drawn i { position: absolute; left: -13px; top: -13px; width: 20px; height: 20px; border-radius: 50%; background: var(--lime);
+             border: 1.5px solid var(--ink); font: 700 11px/17px var(--body); font-style: normal; text-align: center; }
+  .brief { font: 500 14px/1.7 var(--mono); }
+  .brief .c { color: var(--ink-3); } .brief .n { background: var(--lime); padding: 1px 5px; border-radius: 5px; } .brief .s { color: var(--green); }
+  @media (max-width: 900px) { .knows { grid-template-columns: 1fr; } .knows .arrow-to { transform: rotate(90deg); margin: 0 auto; } }
+
+  /* --------------------------------------------------------------- keys */
+  .keys { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 48px; }
+  .key { width: 82px; height: 82px; border-radius: 16px; background: #fff; border: var(--sticker); box-shadow: 0 5px 0 var(--ink);
+         display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; cursor: pointer; user-select: none;
+         transition: transform .08s ease, box-shadow .08s ease, background .15s ease; }
+  .key b { font: 800 26px/1 var(--display); }
+  .key span { font-size: 11.5px; color: var(--ink-2); font-weight: 500; }
+  .key.wide { width: 130px; }
+  .key.down { transform: translateY(5px); box-shadow: 0 0 0 var(--ink); background: var(--lime); }
+  .keynote { margin-top: 26px; height: 28px; font: 700 22px var(--display); }
+
+  /* ----------------------------------------------------------- stickers */
+  .stickers { position: relative; display: flex; flex-wrap: wrap; justify-content: center; gap: 18px 22px; margin-top: 46px; }
+  .sticker { display: inline-flex; align-items: center; gap: 10px; padding: 12px 18px; border: var(--sticker); border-radius: 16px; background: #fff;
+             box-shadow: var(--pop); font: 700 18px/1.1 var(--display); letter-spacing: -.01em; }
+  .sticker svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .sticker.l { background: var(--lime); }
+  .sticker:nth-child(odd) { transform: rotate(-2deg); } .sticker:nth-child(3n) { transform: rotate(2.5deg); }
+  .kao { font: 500 18px var(--mono); color: var(--ink-3); align-self: center; }
+
+
+  /* -------------------------------------------------------------- about */
+  .about { padding: 56px 0 100px; }
+  .divider { width: min(640px, 76%); margin: 10px auto 0; }
+  .divider svg { display: block; width: 100%; height: 28px; overflow: visible; }
+  .divider .under { fill: none; stroke: var(--ink); stroke-width: 7; stroke-linecap: round; }
+  .divider .mark { fill: none; stroke: var(--lime); stroke-width: 3.5; stroke-linecap: round; }
+  .about-hi { margin: 0; font: 800 clamp(34px, 4.4vw, 50px)/1.05 var(--display); letter-spacing: -.035em; }
+  .about-hi .chip { border-width: 2.5px; box-shadow: 3px 3px 0 var(--ink); }
+  /* startup names: the same lime "neon" as the headline chips, and they link out */
+  .neon { display: inline-block; padding: 0 6px; margin: 1px 1px; border: 2px solid var(--ink); border-radius: 7px; background: var(--lime);
+          color: var(--ink); font-weight: 700; text-decoration: none; box-shadow: 2px 2px 0 var(--ink); transform: rotate(-1.2deg);
+          transition: transform .15s ease, box-shadow .15s ease; }
+  a.neon:hover { transform: rotate(0) translateY(-1px); box-shadow: 3px 3px 0 var(--ink); }
+  .fact { display: inline-flex; align-items: center; gap: 4px; padding: 4px 6px 4px 11px; border-radius: 999px; background: #fff;
+          border: 1.5px solid var(--ink); font-size: 13px; font-weight: 500; color: var(--ink); text-decoration: none;
+          transition: transform .15s ease, box-shadow .15s ease; }
+  .fact:hover { transform: translateY(-2px); box-shadow: 2px 2px 0 var(--ink); }
+  .fact .neon { padding: 0 5px; border-width: 1.5px; box-shadow: none; font-size: 12.5px; }
+  .fact .out { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .about-card { display: grid; grid-template-columns: auto 1fr; gap: 44px; align-items: center; max-width: 860px; margin: 46px auto 0;
+        background: #fff; border: var(--sticker); border-radius: 26px; padding: 34px 38px; box-shadow: 5px 5px 0 var(--ink); text-align: left; }
+  .polaroid { position: relative; width: 210px; padding: 10px 10px 34px; background: #fff; border: 1.5px solid var(--line);
+              box-shadow: 0 14px 30px rgba(0,0,0,.14); transform: rotate(-4deg); }
+  .polaroid img { display: block; width: 100%; height: auto; aspect-ratio: 1; object-fit: cover; }
+  .polaroid figcaption { position: absolute; left: 0; right: 0; bottom: 8px; text-align: center; font: 500 13px var(--mono); color: var(--ink-2); }
+  .tape { position: absolute; top: -12px; left: 50%; width: 86px; height: 24px; transform: translateX(-50%) rotate(3deg);
+          background: rgba(200,245,60,.85); border: 1.5px solid var(--ink); }
+  .about-card p { margin: 18px 0 0; font-size: 17px; color: var(--ink-2); max-width: 44ch; }
+  .facts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+  .facts > span { padding: 5px 11px; border-radius: 999px; background: #f4f4f1; border: 1px solid var(--line); font-size: 13px; font-weight: 500; }
+  .facts b { font-weight: 700; color: var(--ink); }
+  .socials { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+  .socials a { display: inline-flex; align-items: center; gap: 7px; height: 38px; padding: 0 14px; border-radius: 999px; background: #fff;
+               border: var(--sticker); font-weight: 600; font-size: 14px; text-decoration: none; transition: transform .15s ease, background .15s ease; }
+  .socials a:hover { transform: translateY(-2px); background: var(--lime); }
+  .socials a.kanvis { background: var(--lime); box-shadow: 2px 2px 0 var(--ink); }
+  .socials svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+  @media (max-width: 760px) { .about-card { grid-template-columns: 1fr; justify-items: center; text-align: center; padding: 30px 22px; }
+                              .facts, .socials { justify-content: center; } .about-card p { margin-left: auto; margin-right: auto; } }
+
+  /* -------------------------------------------------------------- final */
+  .final { padding: 120px 0 90px; }
+  .final .mascot-big { width: 190px; margin: 0 auto 26px; display: block; }
+  footer { padding: 30px 0 40px; border-top: 1px solid var(--line); color: var(--ink-3); font-size: 13px; display: flex; gap: 16px; justify-content: space-between; flex-wrap: wrap; }
+
+  /* mascot */
+  .eye { transform-box: fill-box; transform-origin: center; animation: blink 5.5s infinite; }
+  @keyframes blink { 0%, 94%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.1); } }
+  .wiggle { transform-box: fill-box; transform-origin: 30% 90%; animation: wiggle 3.2s ease-in-out infinite; }
+  @keyframes wiggle { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-8deg); } }
+
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+
+<!-- A menu bar, because this is a Mac app: the lime icon is pointy itself. -->
+<header class="menubar">
+  <a class="brand" href="#"><svg width="26" height="26" viewBox="0 0 64 64" aria-hidden="true"><rect x="4" y="4" width="56" height="56" rx="15" fill="#c8f53c" stroke="#111" stroke-width="5"/><circle cx="24.5" cy="28" r="4" fill="#111"/><circle cx="39.5" cy="28" r="4" fill="#111"/><path d="M26 39q6 6.5 12 0" fill="none" stroke="#111" stroke-width="4" stroke-linecap="round"/></svg>pointy</a>
+  <nav><a href="#how">how it works</a><a href="#keys">keys</a><a href="#get">download</a><a href="https://github.com/HamzaBinMubeen/pointy" target="_blank" rel="noopener">github</a></nav>
+  <div class="tray">
+    <span class="me" title="pointy"><svg width="20" height="20" viewBox="0 0 64 64" aria-hidden="true"><rect x="4" y="4" width="56" height="56" rx="15" fill="#c8f53c" stroke="#111" stroke-width="5"/><circle cx="24.5" cy="28" r="4" fill="#111"/><circle cx="39.5" cy="28" r="4" fill="#111"/><path d="M26 39q6 6.5 12 0" fill="none" stroke="#111" stroke-width="4" stroke-linecap="round"/></svg></span>
+    <svg class="sys" viewBox="0 0 24 24"><path d="M2.5 9a14 14 0 0119 0M5.5 12.5a9.5 9.5 0 0113 0M8.5 16a5 5 0 017 0"/><circle cx="12" cy="19" r=".6" fill="currentColor"/></svg>
+    <svg class="sys" viewBox="0 0 24 24"><rect x="2" y="7" width="17" height="10" rx="2.5"/><path d="M21.5 10.5v3"/><rect x="4" y="9" width="10" height="6" rx="1" fill="currentColor" stroke="none"/></svg>
+    <span class="sys" id="clock">9:41</span>
+    <a class="coffee-link" data-coffee href="#" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M4 9h12v5a5 5 0 01-5 5H9a5 5 0 01-5-5z"/><path d="M16 10.5h1.5a2.5 2.5 0 010 5H16"/><path d="M8 3.5c-.6 1 .6 1.6 0 2.8M12 3.5c-.6 1 .6 1.6 0 2.8"/></svg><span>buy me a coffee</span></a>
+    <a class="get" href="#get">get pointy</a>
+  </div>
+</header>
+
+<main>
+  <!-- ============================================================ hero -->
+  <section class="hero">
+    <div class="wrap">
+      <div class="hero-head center">
+        <span class="kicker"><b></b> meet pointy · for Claude Code, Cursor & Codex</span>
+        <h1 class="h1" style="margin-top:20px">Point at it. Say it. <span class="chip">Shipped</span><span class="dot">.</span></h1>
+        <p class="lede" style="margin:20px auto 0">Draw on your UI, talk, and your coding agent knows exactly what to change.</p>
+        <div class="hero-cta" style="justify-content:center">
+          <a class="btn dark" href="#get"><svg viewBox="0 0 24 24"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/></svg>Download for Mac</a>
+          <a class="btn ghost" href="#how">See how</a>
+        </div>
+      </div>
+
+      <div class="stage-wrap" id="demo">
+        <div class="stage-scale"><div class="stage" id="stage">
+          <div class="win browser">
+            <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><div class="url">localhost:3000/dashboard</div></div>
+            <div class="page" id="page">
+              <div class="nav"><div class="logo"></div><span>Overview</span><span>Customers</span><span>Billing</span><span class="upgrade" id="upgrade">Upgrade</span></div>
+              <div class="head"><h3 id="heading">Your <em>week</em></h3><p class="tagline">Up 18% on last week. Your best one yet.</p></div>
+              <div class="stats" id="stats">
+                <div class="stat"><small>Signups</small><b>1,284</b><span class="trend">▲ 12%</span></div>
+                <div class="stat"><small>Revenue</small><b>$9.4k</b><span class="trend">▲ 8%</span></div>
+                <div class="stat"><small>Churn</small><b>1.2%</b><span class="trend down">▼ 0.3</span></div>
+              </div>
+              <div class="chart" id="chart">
+                <div class="bars"><i style="--h:40%"><span>1.1k</span></i><i style="--h:62%"><span>1.7k</span></i><i style="--h:48%"><span>1.3k</span></i><i style="--h:80%"><span>2.2k</span></i><i style="--h:58%"><span>1.6k</span></i><i class="best" style="--h:92%"><span>2.5k</span></i><i style="--h:70%"><span>1.9k</span></i></div>
+                <div class="days"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
+              </div>
+            </div>
+            <svg class="ink" id="ink"></svg>
+            <div class="subtitle" id="sub"></div>
+            <div class="strip" id="strip">
+              <div class="main">
+                <span class="rec"><i></i><span id="time">0:04</span></span>
+                <span class="t" data-k="v"><svg viewBox="0 0 24 24"><path d="M7 4.5v13.2l3.4-3.2 2.3 5 2.2-1-2.3-4.9 4.6-.3z"/></svg><kbd>V</kbd></span>
+                <span class="t" data-k="r"><svg viewBox="0 0 24 24"><rect x="4.5" y="6.5" width="15" height="11" rx="2.5"/></svg><kbd>R</kbd></span>
+                <span class="t" data-k="o"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="7.5" ry="5.75"/></svg><kbd>O</kbd></span>
+                <span class="t" data-k="a"><svg viewBox="0 0 24 24"><path d="M6.5 17.5l11-11M10 6.5h7.5V14"/></svg><kbd>A</kbd></span>
+                <span class="sep"></span>
+                <span class="meter" id="meter"><i></i><i></i><i></i><i></i><i></i></span>
+                <span class="sep"></span>
+                <span class="done" id="done"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Done</span>
+              </div>
+              <div class="savedmsg"><span class="tick"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#111" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span><b style="color:#fff">Brief copied</b> &nbsp;<span id="savedtext" style="color:rgba(255,255,255,.55)">2 marks · paste into Claude Code</span></span></div>
+            </div>
+          </div>
+          <div class="win term" id="term">
+            <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><span>claude</span></div>
+            <pre id="termtext"></pre>
+          </div>
+          <div class="perch" aria-hidden="true">
+            <div class="bubble">make it pop! <span style="font-family:var(--mono);font-weight:500">^ω^</span></div>
+          <svg class="mascot" viewBox="0 0 170 160">
+            <!-- marker -->
+            <g class="wiggle"><rect x="118" y="44" width="14" height="58" rx="5" transform="rotate(28 125 73)" fill="#111"/><path d="M137 34l8 4-6 9z" fill="#c8f53c" stroke="#111" stroke-width="3" stroke-linejoin="round" transform="rotate(4 140 40)"/></g>
+            <rect x="18" y="38" width="112" height="104" rx="30" fill="#c8f53c" stroke="#111" stroke-width="4"/>
+            <circle class="eye" cx="58" cy="82" r="6.5" fill="#111"/><circle class="eye" cx="92" cy="82" r="6.5" fill="#111"/>
+            <path d="M64 104q11 9 22 0" fill="none" stroke="#111" stroke-width="4" stroke-linecap="round"/>
+            <path d="M122 104q16-6 18-26" fill="none" stroke="#111" stroke-width="4" stroke-linecap="round"/>
+            <path d="M40 142v10M106 142v10" stroke="#111" stroke-width="4" stroke-linecap="round"/>
+          </svg>
+          </div>
+          <svg class="cursor" id="cursor" viewBox="0 0 22 30"><path d="M2 2v22l6-6 4 9 4-2-4-8.5h8.5z" fill="#111" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        </div></div>
+        <div class="try">your turn: pick <kbd>V</kbd> <kbd>R</kbd> <kbd>O</kbd> <kbd>A</kbd> and drag on the page</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================== how it works -->
+  <section id="how" class="center">
+    <div class="wrap">
+      <h2 class="h2">Three moves<span class="dot">.</span> No typing<span class="dot">.</span></h2>
+      <div class="steps">
+        <div class="step">
+          <div class="art"><svg width="190" height="110" viewBox="0 0 190 110">
+            <rect x="22" y="22" width="146" height="66" rx="10" fill="#fff" stroke="#e2e2de"/><rect x="36" y="38" width="52" height="34" rx="6" fill="#efefec"/><rect x="100" y="38" width="52" height="34" rx="6" fill="#efefec"/>
+            <rect x="14" y="14" width="162" height="82" rx="10" fill="none" stroke="#111" stroke-width="7" opacity=".9"/><rect x="14" y="14" width="162" height="82" rx="10" fill="none" stroke="#c8f53c" stroke-width="3.5"/>
+            <circle cx="16" cy="14" r="9" fill="#c8f53c" stroke="#111" stroke-width="1.5"/><text x="16" y="18" text-anchor="middle" font-size="11" font-weight="700" font-family="Inter">1</text></svg></div>
+          <h4>Draw</h4><p>Box it, circle it, point at it.</p>
+        </div>
+        <svg class="arrow-to" viewBox="0 0 46 24"><path d="M3 12h38M33 4l8 8-8 8"/></svg>
+        <div class="step">
+          <div class="art"><div style="display:flex;flex-direction:column;align-items:center;gap:14px">
+            <div class="wave" style="display:flex;gap:4px;align-items:center;height:34px">
+              <i style="width:5px;height:14px;background:#111;border-radius:3px"></i><i style="width:5px;height:26px;background:#111;border-radius:3px"></i><i style="width:5px;height:34px;background:#c8f53c;border:1.5px solid #111;border-radius:3px"></i><i style="width:5px;height:22px;background:#111;border-radius:3px"></i><i style="width:5px;height:30px;background:#c8f53c;border:1.5px solid #111;border-radius:3px"></i><i style="width:5px;height:16px;background:#111;border-radius:3px"></i></div>
+            <span style="background:#1e1e20;color:#fff;font:500 13px var(--body);padding:7px 12px;border-radius:11px">“spread these out” <span style="opacity:.45">a bit</span></span></div></div>
+          <h4>Talk</h4><p>Say it like you'd say it to a friend.</p>
+        </div>
+        <svg class="arrow-to" viewBox="0 0 46 24"><path d="M3 12h38M33 4l8 8-8 8"/></svg>
+        <div class="step">
+          <div class="art" style="background:#141414"><pre style="margin:0;text-align:left;font:500 13px/1.7 var(--mono);color:#ddd"><span style="color:#c8f53c">›</span> /ui
+<span style="color:#3ddc97">✓</span> StatsBand gap-2 → gap-6
+<span style="color:#3ddc97">✓</span> heading text-2xl → 4xl</pre></div>
+          <h4>Paste</h4><p>Claude Code takes it from there.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================== components -->
+  <section class="center" style="padding-top:20px">
+    <div class="wrap">
+      <h2 class="h2">Not pixels<span class="dot">.</span> <span class="chip">Components</span><span class="dot">.</span></h2>
+      <p class="lede" style="margin:18px auto 0">It reads the page you drew on, so the brief names the real thing.</p>
+      <div class="knows">
+        <div class="shot">
+          <div class="row">
+            <div class="stat"><small>Signups</small><b>1,284</b></div>
+            <div class="stat" style="position:relative"><small>Revenue</small><b>$9.4k</b>
+              <span class="drawn"><i>1</i></span></div>
+            <div class="stat"><small>Churn</small><b>1.2%</b></div>
+          </div>
+        </div>
+        <svg class="arrow-to" viewBox="0 0 46 24"><path d="M3 12h38M33 4l8 8-8 8"/></svg>
+        <div class="brief" style="text-align:left">
+          <span class="c">## Mark 1 · rectangle</span><br>
+          <b>Said</b> “make revenue stand out”<br><br>
+          <span class="n">StatCard</span> — “Revenue $9.4k”<br>
+          <span class="s">src/dashboard/Stats.tsx:42</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================= keys -->
+  <section id="keys" class="center">
+    <div class="wrap">
+      <h2 class="h2">Every tool<span class="dot">.</span> One key<span class="dot">.</span></h2>
+      <p class="lede" style="margin:18px auto 0">Go on, press them.</p>
+      <div class="keys" id="keyrow">
+        <div class="key" data-k="v" data-tip="select a thing"><b>V</b><span>select</span></div>
+        <div class="key" data-k="r" data-tip="box it"><b>R</b><span>box</span></div>
+        <div class="key" data-k="o" data-tip="circle it"><b>O</b><span>oval</span></div>
+        <div class="key" data-k="a" data-tip="point at it"><b>A</b><span>arrow</span></div>
+        <div class="key" data-k="h" data-tip="click the page like normal"><b>H</b><span>use page</span></div>
+        <div class="key" data-k="t" data-tip="type instead of talking"><b>T</b><span>note</span></div>
+        <div class="key wide" data-k="enter" data-tip="brief copied ✓"><b>⌘↩</b><span>done</span></div>
+      </div>
+      <div class="keynote" id="keynote">&nbsp;</div>
+    </div>
+  </section>
+
+  <!-- ========================================================= stickers -->
+  <section class="center" style="padding-top:30px">
+    <div class="wrap">
+      <h2 class="h2">The small print<span class="dot">,</span> but fun<span class="dot">.</span></h2>
+      <div class="stickers">
+        <span class="sticker l"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0013 0M12 17.5V21"/></svg>speech stays on your Mac</span>
+        <span class="kao">(•̀ᴗ•́)و</span>
+        <span class="sticker"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"/></svg>any website, even prod</span>
+        <span class="sticker"><svg viewBox="0 0 24 24"><path d="M4.5 7h15M9.5 7V4.8h5V7M6.8 7l.9 12h8.6l.9-12"/></svg>cleans up after itself</span>
+        <span class="sticker l"><svg viewBox="0 0 24 24"><path d="M8 9l-4 3 4 3M16 9l4 3-4 3M13.5 6l-3 12"/></svg>names the real component</span>
+        <span class="kao">{ ^_^ }</span>
+        <span class="sticker"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>one paste into Claude Code</span>
+        <span class="sticker l"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/></svg>Mac app + browser extension</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ final -->
+  <section class="final center" id="get">
+    <div class="wrap">
+      <svg class="mascot-big" viewBox="0 0 170 160" aria-hidden="true">
+        <g class="wiggle"><rect x="118" y="44" width="14" height="58" rx="5" transform="rotate(28 125 73)" fill="#111"/><path d="M137 34l8 4-6 9z" fill="#c8f53c" stroke="#111" stroke-width="3" stroke-linejoin="round" transform="rotate(4 140 40)"/></g>
+        <rect x="18" y="38" width="112" height="104" rx="30" fill="#c8f53c" stroke="#111" stroke-width="4"/>
+        <circle class="eye" cx="58" cy="82" r="6.5" fill="#111"/><circle class="eye" cx="92" cy="82" r="6.5" fill="#111"/>
+        <path d="M60 102q15 14 30 0" fill="#111" stroke="#111" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M122 104q16-6 18-26" fill="none" stroke="#111" stroke-width="4" stroke-linecap="round"/>
+        <path d="M40 142v10M106 142v10" stroke="#111" stroke-width="4" stroke-linecap="round"/>
+      </svg>
+      <h2 class="h2">Stop describing pixels<span class="dot">.</span><br><span class="chip">Point at them</span><span class="dot">.</span></h2>
+      <div class="hero-cta" style="justify-content:center;margin-top:36px">
+        <a class="btn lime" id="download" href="#"><svg viewBox="0 0 24 24"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/></svg>Download for Mac</a>
+        <a class="btn coffee" data-coffee href="#" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M4 9h12v5a5 5 0 01-5 5H9a5 5 0 01-5-5z"/><path d="M16 10.5h1.5a2.5 2.5 0 010 5H16"/><path d="M8 3.5c-.6 1 .6 1.6 0 2.8M12 3.5c-.6 1 .6 1.6 0 2.8"/></svg>Buy me a coffee</a>
+      </div>
+      <p class="small" style="margin-top:14px">free · macOS 26 · Apple silicon & Intel · Chrome, Edge, Brave, Arc</p>
+    </div>
+  </section>
+
+  <!-- A divider drawn the way the overlay draws: lime, edged in black. -->
+  <div class="divider" aria-hidden="true">
+    <svg viewBox="0 0 640 28" preserveAspectRatio="none"><path class="under" d="M4 14 C 24 2, 44 2, 64 14 S 104 26, 124 14 S 164 2, 184 14 S 224 26, 244 14 S 284 2, 304 14 S 344 26, 364 14 S 404 2, 424 14 S 464 26, 484 14 S 524 2, 544 14 S 584 26, 604 14 S 630 6, 636 10"/><path class="mark" d="M4 14 C 24 2, 44 2, 64 14 S 104 26, 124 14 S 164 2, 184 14 S 224 26, 244 14 S 284 2, 304 14 S 344 26, 364 14 S 404 2, 424 14 S 464 26, 484 14 S 524 2, 544 14 S 584 26, 604 14 S 630 6, 636 10"/></svg>
+  </div>
+
+  <!-- ============================================================ about -->
+  <section class="about center" id="me">
+    <div class="wrap">
+      <div class="about-card">
+        <figure class="polaroid" style="margin:0"><span class="tape"></span><img src="hamza.jpg" alt="Hamza Bin Mubeen" width="190" height="190" loading="lazy"><figcaption>chief pointer ✦</figcaption></figure>
+        <div>
+          <h2 class="about-hi">Hi, I'm <span class="chip">Hamza</span><span class="dot">.</span></h2>
+          <p>I build the tools I wish I had. Founder of <a class="neon" href="https://kanvis.me" target="_blank" rel="noopener">Kanvis</a>; before that <a class="neon" href="https://theuniapp.com" target="_blank" rel="noopener">U.n.I</a> and <a class="neon" href="https://cirkles.space" target="_blank" rel="noopener">Cirkles</a>. CS at LUMS.</p>
+          <div class="facts">
+            <a class="fact" href="https://theuniapp.com" target="_blank" rel="noopener"><b>15k+</b> users on <span class="neon">U.n.I</span><svg class="out" viewBox="0 0 24 24"><path d="M8 16L16 8M9.5 8H16v6.5"/></svg></a>
+            <a class="fact" href="https://cirkles.space" target="_blank" rel="noopener"><b>12k</b> monthly on <span class="neon">Cirkles</span><svg class="out" viewBox="0 0 24 24"><path d="M8 16L16 8M9.5 8H16v6.5"/></svg></a>
+            <span>led <b>200+</b> people</span>
+            <span><b>35+</b> startups mentored</span>
+            <span>Red Bull Basement finalist</span>
+          </div>
+          <div class="socials">
+            <a class="kanvis" href="https://kanvis.me/hamzabinmubeen" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="3"/><circle cx="9.5" cy="10.5" r="2.3"/><path d="M6 16.5c.8-1.8 2-2.6 3.5-2.6s2.7.8 3.5 2.6M14.5 9h3M14.5 12.5h3"/></svg>My Kanvis</a>
+            <a href="https://www.linkedin.com/in/hamza-bin-mubeen/" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 10.5V16M8 7.5v.01M12 16v-3.2a2.3 2.3 0 014.6 0V16M12 10.5V16"/></svg>LinkedIn</a>
+            <a href="https://www.instagram.com/hamza.bin.mubeen/" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5.5"/><circle cx="12" cy="12" r="4"/><path d="M17.3 6.7v.01"/></svg>Instagram</a>
+            <a href="https://github.com/HamzaBinMubeen" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M9 19c-4 1.3-4-2-5.5-2.5M14.5 21v-3.4a3 3 0 00-.8-2.3c2.7-.3 5.5-1.3 5.5-6a4.7 4.7 0 00-1.3-3.2 4.3 4.3 0 00-.1-3.2s-1-.3-3.4 1.3a11.6 11.6 0 00-6 0C6 2.6 5 2.9 5 2.9a4.3 4.3 0 00-.1 3.2A4.7 4.7 0 003.6 9.3c0 4.6 2.8 5.7 5.5 6a3 3 0 00-.8 2.3V21"/></svg>GitHub</a>
+            <a data-coffee href="#" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M4 9h12v5a5 5 0 01-5 5H9a5 5 0 01-5-5z"/><path d="M16 10.5h1.5a2.5 2.5 0 010 5H16"/><path d="M8 3.5c-.6 1 .6 1.6 0 2.8M12 3.5c-.6 1 .6 1.6 0 2.8"/></svg>Buy me a coffee</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="wrap"><footer><span>pointy · <a href="https://github.com/HamzaBinMubeen/pointy" target="_blank" rel="noopener">open source</a> · <a data-coffee href="#" target="_blank" rel="noopener">buy me a coffee</a></span><span>made for people who can see it but can't name it</span></footer></div>
+</main>
+
+<script>
+/* ----------------------------------------------------------------------------
+   The hero demo: one loop that tells the whole story without words —
+   box the cards, say the change, flag the heading, Done, /ui, and the page
+   fixes itself. Drag on the page to take over and draw your own marks.
+---------------------------------------------------------------------------- */
+const $ = (s, r = document) => r.querySelector(s);
+const DOWNLOAD_URL = "https://github.com/HamzaBinMubeen/pointy/releases/latest/download/Pointy.dmg";
+const COFFEE_URL = "https://buymeacoffee.com/hamzabinmubeen";
+$("#download").href = DOWNLOAD_URL;
+for (const a of document.querySelectorAll("[data-coffee]")) a.href = COFFEE_URL;
+
+// live menu-bar clock
+const clock = () => { $("#clock").textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); };
+clock(); setInterval(clock, 15000);
+
+// scale the fixed-size stage to the column width
+const stage = $("#stage"), scaleBox = $(".stage-scale");
+const stageWrap = $("#demo");
+function fit() {
+  const s = Math.min(1, scaleBox.clientWidth / 1000);
+  stage.style.transform = `scale(${s})`;
+  scaleBox.style.height = `${600 * s}px`;
+  stageWrap.style.marginTop = `${Math.round(128 * s + 28)}px`;   // room for the perched mascot, at any size
+}
+addEventListener("resize", fit); fit();
+
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+// ?speed=0.2 plays the demo five times faster (for checking it); 1 for visitors.
+const SPEED = Math.min(1, Math.max(0.02, Number(new URLSearchParams(location.search).get("speed")) || 1));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms * SPEED));
+const NS = "http://www.w3.org/2000/svg";
+const ink = $("#ink"), page = $("#page"), sub = $("#sub"), strip = $("#strip"), term = $("#term"), termText = $("#termtext"), cursor = $("#cursor");
+let running = true, userTook = false, loopId = 0;
+
+function el(name, attrs, parent = ink) { const e = document.createElementNS(NS, name); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; }
+function local(node) { const a = node.getBoundingClientRect(), b = $(".browser").getBoundingClientRect(), s = b.width / 820; return { x: (a.left - b.left) / s, y: (a.top - b.top) / s, w: a.width / s, h: a.height / s }; }
+const BX = 90; // the browser window's left offset in the stage; the loop works in window coordinates
+function moveCursor(x, y, ms = 900) { cursor.style.transitionDuration = `${ms}ms`; cursor.style.transform = `translate(${x + BX}px, ${y}px)`; }
+function tool(k) { for (const t of strip.querySelectorAll(".t")) t.classList.toggle("on", t.dataset.k === k); }
+
+/** A lime mark with its black edge, drawn in over `ms`. */
+async function drawRect(r, ms = 800, n) {
+  const g = el("g", { class: "fade" });
+  const d = `M${r.x},${r.y} h${r.w} v${r.h} h${-r.w} z`;
+  const under = el("path", { d, class: "under" }, g), mark = el("path", { d, class: "mark" }, g);
+  const len = 2 * (r.w + r.h);
+  for (const p of [under, mark]) { p.style.strokeDasharray = len; p.style.strokeDashoffset = len; p.style.transition = `stroke-dashoffset ${ms}ms cubic-bezier(.45,.05,.3,1)`; }
+  startDraw(under, mark);
+  await sleep(ms);
+  if (n) badge(g, r.x, r.y, n);
+  return g;
+}
+/** Start a stroke's draw-in. Reading layout first commits the hidden starting
+    state, so the transition runs even where animation frames are paused. */
+function startDraw(...paths) { for (const p of paths) { p.getBoundingClientRect(); p.style.strokeDashoffset = 0; } }
+function badge(g, x, y, n) { const b = el("g", { class: "badge" }, g); el("circle", { cx: x, cy: y, r: 10 }, b); const t = el("text", { x, y: y + 4, "text-anchor": "middle" }, b); t.textContent = n; }
+async function drawArrow(a, b, ms = 600, n) {
+  const g = el("g", { class: "fade" });
+  const ang = Math.atan2(b.y - a.y, b.x - a.x), hl = 13;
+  const head = `M${b.x - hl * Math.cos(ang - .5)},${b.y - hl * Math.sin(ang - .5)} L${b.x},${b.y} L${b.x - hl * Math.cos(ang + .5)},${b.y - hl * Math.sin(ang + .5)}`;
+  const d = `M${a.x},${a.y} L${b.x},${b.y} ${head}`;
+  const under = el("path", { d, class: "under" }, g), mark = el("path", { d, class: "mark" }, g);
+  const len = Math.hypot(b.x - a.x, b.y - a.y) + 40;
+  for (const p of [under, mark]) { p.style.strokeDasharray = len; p.style.strokeDashoffset = len; p.style.transition = `stroke-dashoffset ${ms}ms ease-out`; }
+  startDraw(under, mark);
+  await sleep(ms);
+  if (n) badge(g, a.x, a.y, n);
+  return g;
+}
+/** An oval mark around a box, drawn in like the others. */
+async function drawOval(r, ms = 800, n) {
+  const g = el("g", { class: "fade" });
+  const cx = r.x + r.w / 2, cy = r.y + r.h / 2, rx = r.w / 2, ry = r.h / 2;
+  const d = `M${cx - rx},${cy} a${rx},${ry} 0 1,0 ${rx * 2},0 a${rx},${ry} 0 1,0 ${-rx * 2},0`;
+  const under = el("path", { d, class: "under" }, g), mark = el("path", { d, class: "mark" }, g);
+  const len = Math.PI * (3 * (rx + ry) - Math.sqrt((3 * rx + ry) * (rx + 3 * ry))) + 10;
+  for (const p of [under, mark]) { p.style.strokeDasharray = len; p.style.strokeDashoffset = len; p.style.transition = `stroke-dashoffset ${ms}ms cubic-bezier(.45,.05,.3,1)`; }
+  startDraw(under, mark);
+  await sleep(ms);
+  if (n) badge(g, cx - rx * .72, cy - ry * .72, n);
+  return g;
+}
+function selectOutlines(nodes, g = el("g", { class: "fade" })) {
+  for (const n of nodes) { const r = local(n); el("rect", { x: r.x, y: r.y, width: r.w, height: r.h, rx: 12, class: "sel" }, g); }
+  return g;
+}
+/** One line of Claude's work landing: apply the change, pulse what it touched, retire its mark. */
+async function land(fix, target, ...marks) {
+  page.classList.add(fix);
+  for (const m of marks) if (m) m.style.opacity = 0;
+  target.classList.remove("flash"); void target.offsetWidth; target.classList.add("flash");
+  await sleep(700);
+}
+
+async function say(text, dimTail = "") {
+  sub.classList.add("show");
+  const words = text.split(" ");
+  for (let i = 1; i <= words.length; i++) {
+    if (!running) return;
+    const shown = words.slice(0, i).join(" ");
+    sub.innerHTML = `${shown}${i < words.length ? ` <span class="dim">${words.slice(i, i + 2).join(" ")}</span>` : dimTail}`;
+    await sleep(170);
+  }
+}
+let meterT;
+function meter(on) { clearInterval(meterT); const bars = $("#meter").children; meterT = setInterval(() => { for (const b of bars) b.style.height = on ? `${3 + Math.random() * 11}px` : "3px"; }, 120); if (!on) for (const b of bars) b.style.height = "3px"; }
+async function typeTerm(lines) {
+  termText.innerHTML = "";
+  for (const line of lines) {
+    if (!running) return;
+    if (line.typed) { const span = document.createElement("span"); span.innerHTML = line.prefix || ""; termText.appendChild(span); for (const ch of line.html) { span.innerHTML += ch; await sleep(55); } termText.appendChild(document.createTextNode("\n")); }
+    else { termText.innerHTML += line.html + "\n"; await sleep(line.wait || 420); }
+  }
+}
+typeTerm.append = async (html, wait = 260) => { if (!running) return; termText.innerHTML += html + "\n"; await sleep(wait); };
+function reset() {
+  ink.innerHTML = ""; sub.classList.remove("show"); sub.innerHTML = ""; strip.classList.remove("saved");
+  term.classList.remove("show"); termText.innerHTML = ""; page.classList.remove("fix-cards", "fix-head", "fix-chart", "fix-cta"); tool("r"); meter(false);
+}
+
+async function loop(id) {
+  // Each step waits, then checks the loop is still wanted: taking over the demo
+  // must stop an animation that is half-way through, not let it run to the end.
+  const STOP = {};
+  const go = async (p) => { const v = await p; if (!running || id !== loopId) throw STOP; return v; };
+  try {
+  while (running && id === loopId) {
+    reset();
+    const cards = [...page.querySelectorAll(".stat")], first = local(cards[0]), last = local(cards[2]);
+    const h = local($("#heading")), chart = local($("#chart")), up = local($("#upgrade"));
+
+    // 1 · box the cards
+    moveCursor(first.x - 30, first.y - 30, 10); await go(sleep(500));
+    meter(true); tool("r"); await go(sleep(300));
+    const box = { x: first.x - 14, y: first.y - 14, w: last.x + last.w - first.x + 28, h: first.h + 28 };
+    moveCursor(box.x + box.w, box.y + box.h, 800);
+    const m1 = await go(drawRect(box, 800, 1));
+    const s1 = selectOutlines(cards);
+    await go(say("these feel cramped, spread them out and show the trend"));
+    await go(sleep(350));
+
+    // 2 · arrow at the heading
+    tool("a"); await go(sleep(250));
+    const from = { x: h.x + 250, y: h.y - 2 }, to = { x: h.x + 112, y: h.y + h.h / 2 };
+    moveCursor(from.x, from.y, 650); await go(sleep(650));
+    moveCursor(to.x, to.y, 550);
+    const m2 = await go(drawArrow(from, to, 550, 2));
+    await go(say("make this heading way bigger, and say how we did"));
+    await go(sleep(350));
+
+    // 3 · oval round the chart
+    tool("o"); await go(sleep(250));
+    const ring = { x: chart.x - 16, y: chart.y - 26, w: chart.w + 32, h: chart.h + 34 };
+    moveCursor(ring.x + ring.w * .85, ring.y + ring.h * .9, 700); await go(sleep(500));
+    const m3 = await go(drawOval(ring, 850, 3));
+    await go(say("turn this into a real chart, highlight the best day"));
+    await go(sleep(350));
+
+    // 4 · select the Upgrade button
+    tool("v"); await go(sleep(250));
+    moveCursor(up.x + up.w / 2, up.y + up.h / 2, 750); await go(sleep(800));
+    const m4 = selectOutlines([$("#upgrade")]);
+    badge(m4, up.x, up.y, 4);
+    await go(say("and this button should pop"));
+    await go(sleep(600));
+
+    // Done, then Claude works through the brief — each line lands live.
+    const done = local($("#done")); moveCursor(done.x + 30, done.y + 14, 800); await go(sleep(850));
+    $("#done").style.transform = "scale(.94)"; await go(sleep(140)); $("#done").style.transform = "";
+    $("#savedtext").textContent = "4 marks · paste into Claude Code";
+    meter(false); sub.classList.remove("show"); strip.classList.add("saved");
+    await go(sleep(800));
+    moveCursor(1000 - BX, 400, 900);   // rest on the terminal's title bar, clear of its text
+    term.classList.add("show");
+    await go(typeTerm([
+      { prefix: '<span class="p">›</span> ', html: "/ui", typed: true },
+      { html: '<span class="dim">reading brief · 4 marks</span>', wait: 600 },
+    ]));
+    await go(typeTerm.append('<span class="ok">✓</span> StatCards  gap-1.5 → gap-6, + trends'));
+    await go(land("fix-cards", $("#stats"), m1, s1));
+    await go(typeTerm.append('<span class="ok">✓</span> Heading  text-2xl → text-5xl, + tagline'));
+    await go(land("fix-head", $("#heading"), m2));
+    await go(typeTerm.append('<span class="ok">✓</span> WeekChart  ink bars, best day in lime'));
+    await go(land("fix-chart", $("#chart"), m3));
+    await go(typeTerm.append('<span class="ok">✓</span> Upgrade  ghost → lime call to action'));
+    await go(land("fix-cta", $("#upgrade"), m4));
+    await go(typeTerm.append('<span class="dim">4 of 4 done</span>'));
+    await go(sleep(3600));
+  }
+  } catch (e) { if (e !== STOP) throw e; }
+}
+
+/* ----------------------------------------------------------------------------
+   Try it: the demo window is a working toy. Pick a tool in its toolbar (or
+   press V R O A while it's on screen) and drag on the page; Done "copies" the
+   brief and clears the marks.
+---------------------------------------------------------------------------- */
+const browser = $(".browser");
+const SELECTABLE = ".stat, #heading, .tagline, .nav span, .nav .logo, .bars i, .chart, .upgrade";
+const LINES = ["these feel cramped", "make this pop", "more room here", "move this up a bit", "bigger, please", "this colour is off"];
+let drag = null, userTool = "r", marks = 0, demoVisible = false;
+new IntersectionObserver(([e]) => { demoVisible = e.isIntersecting; }, { threshold: 0.3 }).observe(browser);
+
+function takeOver() {
+  if (userTook) return;
+  userTook = true; running = false; loopId++;
+  reset(); cursor.style.opacity = 0; meter(true); marks = 0; setTool("r");
+  sub.classList.add("show"); sub.innerHTML = `your turn <span class="dim">· pick a tool, drag on the page</span>`;
+}
+function setTool(k) { userTool = k; tool(k); browser.dataset.tool = k; }
+function point(e) { const b = browser.getBoundingClientRect(), s = b.width / 820; return { x: (e.clientX - b.left) / s, y: (e.clientY - b.top) / s }; }
+function narrate() {
+  sub.classList.add("show");
+  sub.innerHTML = `${marks} mark${marks === 1 ? "" : "s"} <span class="dim">· “${LINES[(marks - 1) % LINES.length]}”</span>`;
+}
+
+/** The outline for a shape tool, from where the drag began to where it is now. */
+function shapePath(kind, a, b) {
+  if (kind === "a") {
+    const ang = Math.atan2(b.y - a.y, b.x - a.x), hl = 13;
+    return `M${a.x},${a.y} L${b.x},${b.y} M${b.x - hl * Math.cos(ang - .5)},${b.y - hl * Math.sin(ang - .5)} L${b.x},${b.y} L${b.x - hl * Math.cos(ang + .5)},${b.y - hl * Math.sin(ang + .5)}`;
+  }
+  if (kind === "o") {
+    const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2, rx = Math.max(1, Math.abs(b.x - a.x) / 2), ry = Math.max(1, Math.abs(b.y - a.y) / 2);
+    return `M${cx - rx},${cy} a${rx},${ry} 0 1,0 ${rx * 2},0 a${rx},${ry} 0 1,0 ${-rx * 2},0`;
+  }
+  return `M${a.x},${a.y} H${b.x} V${b.y} H${a.x} Z`;
+}
+
+for (const t of strip.querySelectorAll(".t")) t.addEventListener("click", (e) => { e.stopPropagation(); takeOver(); setTool(t.dataset.k); });
+$("#done").addEventListener("click", async (e) => {
+  e.stopPropagation(); takeOver();
+  if (!marks) { sub.classList.add("show"); sub.innerHTML = `draw something first <span class="dim">· ^_^</span>`; return; }
+  $("#savedtext").textContent = `${marks} mark${marks === 1 ? "" : "s"} · paste into Claude Code`;
+  sub.classList.remove("show"); strip.classList.add("saved"); meter(false);
+  await sleep(1900);
+  ink.innerHTML = ""; marks = 0; strip.classList.remove("saved"); meter(true);
+  sub.classList.add("show"); sub.innerHTML = `your turn <span class="dim">· pick a tool, drag on the page</span>`;
+});
+
+browser.addEventListener("pointerdown", (e) => {
+  if (e.target.closest(".strip, .titlebar")) return;
+  takeOver();
+  if (strip.classList.contains("saved")) return;
+  if (userTool === "v") {
+    // Select: the one thing under the pointer, outlined green, as in the app.
+    const hit = document.elementsFromPoint(e.clientX, e.clientY).find((n) => n.matches && n.matches(SELECTABLE));
+    if (!hit) return;
+    const r = local(hit), g = el("g", {});
+    el("rect", { x: r.x, y: r.y, width: r.w, height: r.h, rx: 10, class: "sel" }, g);
+    marks++; badge(g, r.x, r.y, marks); narrate();
+    return;
+  }
+  drag = { a: point(e), g: el("g", {}) };
+  drag.under = el("path", { class: "under" }, drag.g); drag.mark = el("path", { class: "mark" }, drag.g);
+  try { browser.setPointerCapture(e.pointerId); } catch {}   // a synthetic event has no pointer to capture
+});
+browser.addEventListener("pointermove", (e) => {
+  if (!drag) return;
+  drag.b = point(e);
+  const d = shapePath(userTool, drag.a, drag.b);
+  drag.under.setAttribute("d", d); drag.mark.setAttribute("d", d);
+});
+browser.addEventListener("pointerup", () => {
+  if (!drag) return;
+  const far = drag.b && Math.hypot(drag.b.x - drag.a.x, drag.b.y - drag.a.y) > 10;
+  if (far) { marks++; badge(drag.g, drag.a.x, drag.a.y, marks); narrate(); } else drag.g.remove();
+  drag = null;
+});
+addEventListener("keydown", (e) => {
+  const k = e.key.toLowerCase();
+  if (!demoVisible || e.metaKey || e.ctrlKey || k.length !== 1 || !"vroa".includes(k)) return;
+  takeOver(); setTool(k);
+});
+
+if (!reduce) { loop(loopId); } else { page.classList.add("fix-cards", "fix-head", "fix-chart", "fix-cta"); strip.classList.add("saved"); }
+
+// The keyboard row answers your real keyboard.
+const keynote = $("#keynote");
+const keyFor = (e) => (e.key === "Enter" && (e.metaKey || e.ctrlKey) ? "enter" : e.key.toLowerCase());
+function press(k, on) {
+  const key = $(`.key[data-k="${k}"]`); if (!key) return false;
+  key.classList.toggle("down", on);
+  if (on) keynote.textContent = key.dataset.tip;
+  return true;
+}
+addEventListener("keydown", (e) => { if (e.target.closest && e.target.closest("input,textarea")) return; if (press(keyFor(e), true) && e.key === "Enter") e.preventDefault(); });
+addEventListener("keyup", (e) => { press(keyFor(e), false); if (e.key === "Meta" || e.key === "Control") press("enter", false); });
+for (const key of document.querySelectorAll(".key")) {
+  key.addEventListener("pointerdown", () => press(key.dataset.k, true));
+  key.addEventListener("pointerup", () => press(key.dataset.k, false));
+  key.addEventListener("pointerleave", () => press(key.dataset.k, false));
+}
+</script>
+</body>
+</html>
