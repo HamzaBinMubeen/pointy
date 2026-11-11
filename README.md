@@ -1,204 +1,204 @@
 <p align="center">
-  <img src="site/apple-touch-icon.png" width="96" alt="pointy" />
+  <img src="site/apple-touch-icon.png" width="88" alt="pointy logo" />
 </p>
 
 <h1 align="center">pointy</h1>
 
-<p align="center"><b>Point at it. Say it. Shipped.</b><br/>
-Draw on your UI, talk, and your coding agent knows exactly what to change.</p>
+<p align="center">Draw on a web page, say what you want changed, and get a note your coding agent can act on.</p>
 
 <p align="center">
-  <a href="https://github.com/HamzaBinMubeen/pointy/releases/latest/download/Pointy.dmg">Download for Mac</a> ·
+  <a href="https://github.com/HamzaBinMubeen/pointy/releases/latest/download/Pointy.dmg"><b>Download for Mac</b></a> ·
   <a href="https://hamzabinmubeen.github.io/pointy/">Website</a> ·
-  <a href="SAMPLE-BRIEF.md">Sample brief</a>
+  <a href="SAMPLE-BRIEF.md">Example output</a>
 </p>
 
----
+![Pointy open on a dashboard: a box around the stat cards, an arrow at the heading, an oval around the chart, and the Upgrade button selected. The toolbar is at the bottom with what you said above it.](docs/images/overlay.png)
 
-You draw a box around three stat cards and say *"these are way too cramped"*. The brief
-that comes out names them: `StatCard` "Signups 1,284" with its `UsersIcon`, its two
-siblings, the file and line each one lives at, and the fact that they sit in a 3-column
-grid with `gap-1.5` today.
+## What it does
 
-Not "a 1055×170 box at (110, 605)". **The elements, by name.** Hand that to Claude Code,
-Cursor or Codex and it edits the right component the first time.
+Telling an AI agent which part of your UI to change is slow. You end up describing
+things like "the second card in the row under the heading".
 
-Pointy is a small Mac menu-bar app plus a browser extension (Chrome, Edge, Brave). Everything
-runs on your Mac: the extension talks to the app on `127.0.0.1`, and speech is
-transcribed on-device.
+With Pointy you open your page, draw on the parts you mean, and talk. When you press
+Done, Pointy writes a short note (we call it a *brief*) that lists:
+
+- what you said, matched to each thing you drew
+- the exact elements you marked, by their component name, with the file and line
+  they come from
+- how they are laid out right now (for example "3 columns, 6px gap")
+- a cropped screenshot of each mark
+
+The brief is copied to your clipboard. Paste it into Claude Code, Cursor, Codex or any
+other agent. In Claude Code you can also type `/ui`.
+
+Pointy is a small Mac app plus a browser extension for Chrome, Edge or Brave. Everything
+runs on your Mac.
 
 ## Install
 
-1. **Download [Pointy.dmg](https://github.com/HamzaBinMubeen/pointy/releases/latest/download/Pointy.dmg)**
-   and drag Pointy to Applications.
-2. **Open it once from System Settings.** Pointy isn't notarised yet, so macOS blocks
-   the first open. Go to System Settings › Privacy & Security, scroll down, and click
-   **Open Anyway** next to Pointy. You only do this once.
-3. **Follow the checklist on Home.** Pointy lives in the menu bar; its window walks you
-   through the rest:
+1. [Download Pointy.dmg](https://github.com/HamzaBinMubeen/pointy/releases/latest/download/Pointy.dmg)
+   and drag Pointy into Applications.
+2. Open Pointy. macOS will block it the first time because it isn't notarised yet. Go to
+   **System Settings › Privacy & Security**, scroll down, and click **Open Anyway**. You
+   only do this once.
+3. Pointy shows a short checklist. Work through it:
    - **Add the browser extension.** Pointy opens your browser's extensions page and
-     copies the extension's folder path. Turn on Developer mode, click **Load
-     unpacked**, press ⌘⇧G, paste, Return. Once: after that the app keeps the extension
-     up to date by itself.
+     copies a folder path for you. Turn on **Developer mode**, click **Load unpacked**,
+     press **⌘⇧G**, paste, and press Return. After this, Pointy keeps the extension up
+     to date on its own.
    - **Turn on the microphone.**
    - **Add `/ui` to Claude Code** (one click).
-   - **Make your first note**, and optionally **start with your Mac**.
+   - **Make your first note.**
+   - **Start with your Mac** (optional).
 
-Requires macOS 14 or later. On-device transcription needs macOS 26; on older versions
-Pointy uses the browser's speech recognition.
+![The Home tab: a setup checklist with three steps done and three to go.](docs/images/app-home.png)
 
-## Use it
+You need macOS 14 or later. Speech is turned into text on your Mac on macOS 26. On
+older versions Pointy uses your browser's speech recognition instead.
 
-1. Open the page you're working on: your dev server, or any site.
-2. Press **⌃⇧P** (Control-Shift-P). A slim toolbar slides up at the bottom and listening
-   starts. What you say appears as a live subtitle.
-3. Draw and talk. Box things, circle things, point arrows, click elements.
-4. Press **⌘↩** (or click **Done**). The brief lands on your clipboard.
-5. In Claude Code run **`/ui`**, or paste the brief into any agent.
+## How to use it
 
-`/ui` reads the brief *and* looks at the screenshots. A paste is text only, so it starts
-with the folder the screenshots are in, and an agent can go and open them.
+1. Open the page you are working on. This can be your local dev server or any website.
+2. Press **⌃⇧P** (Control + Shift + P). A toolbar appears at the bottom of the page and
+   Pointy starts listening.
+3. Draw on the page and say what you want. Your words appear above the toolbar as you
+   speak.
+4. Press **⌘↩** (Command + Return) or click **Done**. The brief is now on your
+   clipboard.
+5. Paste it into your agent, or type `/ui` in Claude Code.
 
-### Tools and keys
+![The toolbar: timer, mark count, the tools with their keys, the listening indicator, and Done.](docs/images/toolbar.png)
 
-| Key | | |
+### Tools
+
+| Key | Tool | What it does |
 |---|---|---|
-| **V** | select | click an element and talk about it |
-| **R** | rectangle | selects every element fully inside it |
-| **O** | oval | same, as an ellipse |
-| **A** | arrow | points *at* something, or *from* one thing *to* another |
-| **H** | use the page | clicks and scrolls go to the page until you press it again |
-| **T** | note | type a note for the newest mark instead of saying it |
-| **⌘Z** | undo | remove the newest mark |
-| **⌘⌫** | start over | throw the session away (asks first) |
-| **⌘↩** | done | save, and copy the brief |
-| **Esc** | cancel | a shape mid-drag, the note field, start over |
+| **V** | Select | Click one element to talk about it. |
+| **R** | Rectangle | Selects everything fully inside the box. |
+| **O** | Oval | Same as the rectangle, as an oval. |
+| **A** | Arrow | Points at something, or from one thing to another ("move this there"). |
+| **H** | Use the page | Lets you click and scroll the page normally. Press again to go back to drawing. |
+| **T** | Type a note | Type instead of talking, for the latest mark. |
+| **⌘Z** | Undo | Removes the latest mark. |
+| **⌘⌫** | Start over | Throws the session away. Asks first. |
+| **⌘↩** | Done | Saves and copies the brief. |
+| **Esc** | Cancel | Cancels what you are in the middle of. It never saves. |
 
-Every key except Esc can be changed in the app's **Shortcuts** tab. The open shortcut
-(⌃⇧P) belongs to the browser: change it at `chrome://extensions/shortcuts` or
-`edge://extensions/shortcuts`. Edge already uses ⌘⇧E for itself, which is why the default is
-⌃⇧P.
+Tips:
 
-**Things worth knowing**
+- Before you draw, Pointy outlines the element under your cursor and shows its name.
+  Hold **Shift** to pick its parent instead.
+- Your marks are lime. The elements they selected are outlined in green, so you can
+  check the right things were picked.
+- Click a mark's number to delete just that mark.
+- You can talk the whole time. Marks drawn within a few seconds of each other count as
+  one instruction.
+- You can move to another page in the middle of a session. Your marks stay.
 
-- The element under your cursor is outlined and named before you draw. Hold **Shift**
-  to take its parent instead.
-- Lime is what you drew; **green is what got selected**. Check the green before you move on.
-- Click a mark's number badge to delete just that mark.
-- Talk continuously. Marks drawn within seven seconds of each other are grouped into one
-  instruction, and the words attach to the group.
-- Sessions survive navigation: go from `/` to `/pricing` mid-sentence and keep going.
-- Arrows read four ways (element → element, element → space, space → element, space →
-  space), and the brief says which one it was.
+## See past sessions
 
-## What comes out
+The **Sessions** tab lists every session you have kept, with what you said and the
+screenshots. Use **Copy brief** if your clipboard got overwritten.
 
-Each session is a folder in `~/Library/Application Support/Pointy/Sessions/` (stored in
-the system temp folder; by default the newest 25 are kept, for 24 hours. Change both in Settings).
-`Sessions/latest` always points at the newest one.
+![The Sessions tab: a list of sessions on the left and the selected session's words and screenshots on the right.](docs/images/app-sessions.png)
 
-| | |
+Sessions are saved in `~/Library/Application Support/Pointy/Sessions`. By default Pointy
+keeps the last 25 for one day. You can change both in Settings.
+
+Each session folder has:
+
+| File | What it is |
 |---|---|
-| `BRIEF.md` | the compiled brief: the thing you hand your agent |
-| `NN-crop.png` | each mark, in context |
-| `NN.jpg` | the full viewport for each mark |
-| `notes.json` | everything raw |
+| `BRIEF.md` | The brief. This is what you give your agent. |
+| `NN-crop.png` | A cropped screenshot of each mark. |
+| `NN.jpg` | The full screen for each mark. |
+| `notes.json` | All the raw data. |
 
-The **Sessions** tab keeps your history, with **Copy brief** for when the clipboard got
-overwritten. See [SAMPLE-BRIEF.md](SAMPLE-BRIEF.md) for what a brief looks like.
+[SAMPLE-BRIEF.md](SAMPLE-BRIEF.md) shows what a brief looks like.
 
-The brief is deliberately terse. Crops are saved at CSS resolution, element detail is
-printed the first time an element appears rather than every time, and the reading
-instructions live in the `/ui` command rather than in every brief. An 11-mark session
-costs about 5,000 tokens.
+## Change the keys
+
+Every key except Esc can be changed in the **Shortcuts** tab. Click a key, then press
+the new one. If another action already uses it, Pointy tells you.
+
+![The Shortcuts tab: the open shortcut, the five tools and the actions, each with its key.](docs/images/app-shortcuts.png)
+
+The open shortcut (⌃⇧P) belongs to your browser. Change it at
+`chrome://extensions/shortcuts` or `edge://extensions/shortcuts`.
+
+## Settings
+
+<img src="docs/images/app-settings.png" width="560" alt="The Settings tab: how long to keep sessions, the speech engine, microphone, language, appearance, and versions." />
+
+Here you choose how long to keep sessions, which speech engine to use, your microphone
+and language, light or dark mode, and whether Pointy starts with your Mac.
 
 ## Privacy
 
-- Nothing leaves your Mac. The extension only talks to the app on `127.0.0.1:7777`, and
-  the app answers only browser extensions: a website you visit can't reach it (that
-  would otherwise let a page switch the microphone on and read the transcript).
-- With **Apple Speech** or **Apple Dictation** selected (the default on macOS 26), speech is
-  transcribed on-device. **Browser speech**, the fallback, uses your browser's
-  recognition service, which for Chrome means Google's servers.
-- Screenshots are taken only of the tab you're marking up, only while a session is
-  open, and go into the session folder above.
-- No analytics, no accounts. The only download is macOS fetching its own speech model
-  the first time you use on-device transcription.
+- Nothing is uploaded. The extension only talks to the Pointy app on your Mac
+  (`127.0.0.1:7777`).
+- The app only answers the extension. Websites you visit can't reach it.
+- With **Apple Speech** or **Apple Dictation**, your voice is turned into text on your
+  Mac. **Browser speech** sends audio to your browser's speech service (Google, in
+  Chrome). It is only used if you pick it, or on macOS older than 26.
+- Screenshots are only taken of the tab you are marking up, while a session is open.
+- No accounts and no analytics. The only download is the speech model macOS fetches the
+  first time you use on-device speech.
 
-## How it works
+## Things to know
 
-```
-browser tab
- ├── app.js       MAIN world    overlay, gestures, DOM + React inspection
- └── bridge.js    ISOLATED      relays messages ⇄ chrome.runtime
-        │
-   background.js                session state, screenshots, sends on Done
-        │
-   Pointy.app  127.0.0.1:7777   on-device transcription, writes the session,
-                                compiles BRIEF.md (server/brief.cjs)
-```
-
-**Why two content scripts.** React attaches its fiber to the DOM node as an expando
-(`__reactFiber$…`), and an isolated-world content script can't see expandos set by the
-page. Reading them means running in the page's own world, where there's no `chrome.*`.
-Hence the split, and the bridge.
-
-**What's captured per mark.** For every element: the name you'd say out loud (React
-component → icon → `aria-label` → role → tag), its visible text, the icons inside it,
-the source file and line, and a CSS selector. For a group, how the parent lays them out
-and the measured spacing. For whitespace, the container and the nearest named neighbour
-in each direction.
-
-**What's deliberately left out.** Class strings (unless there's nothing better), computed
-style dumps, and geometry on marks that aren't about size or position. All of it is
-context spent telling an agent something it can read for itself.
-
-### Limits
-
-- **Component names exist only in dev builds.** A production bundle renames components
-  to `x`, `f`, `p`, so on a live site expect `` `h2` — "the actual words" `` instead of
-  `` `StatsBand` ``. Usually still enough to find it.
-- **Source paths are best-effort.** React 19 dropped `_debugSource`; Pointy reads
-  `_debugStack` instead, which Next dev builds usually fill in. Turbopack often points at
-  compiled chunks, which are filtered out, and the component name and a `grep` line
-  carry it.
-- **A rectangle selects only what fits entirely inside it.** Draw a little wide.
-- **Marks scroll with the page**, but nothing re-anchors them if the layout reflows.
-- The overlay loads by itself on `localhost`, `127.0.0.1` and `*.localhost`. On any other
-  site, the shortcut or the toolbar icon loads it on demand.
+- **Component names only show up in development builds.** On a live production site,
+  you get the element's tag and text instead, for example `h2` "Your week". That is
+  usually still enough for an agent to find it.
+- **File and line numbers are best effort.** They work in most React dev setups. When
+  they don't, the brief includes a search hint instead.
+- **A rectangle only selects things that fit fully inside it.** Draw a little wider than
+  you need.
+- **Pointy starts by itself** on `localhost`, `127.0.0.1` and `*.localhost`. On other
+  sites, press ⌃⇧P or click the extension's icon.
 
 ## Build from source
 
+You need Xcode 26.
+
 ```bash
-scripts/build-app.sh --install   # universal build → /Applications/Pointy.app
-scripts/make-dmg.sh              # → build/Pointy-<version>.dmg
-swift scripts/make-icons.swift   # redraw every icon from the mascot
+scripts/build-app.sh --install   # build and install to /Applications
+scripts/make-dmg.sh              # make build/Pointy-<version>.dmg
 ```
 
-Needs Xcode 26 (the on-device transcription uses the macOS 26 SDK). The build signs with your "Apple Development" certificate if
-you have one (free: add an Apple ID in Xcode › Settings › Accounts), so macOS keeps the
-microphone grant across rebuilds; without one it signs ad-hoc and the grant resets on
-every build. Set `POINTY_SIGN_IDENTITY` to pick a specific identity.
+- The build signs with your Apple Development certificate if you have one (free: add
+  your Apple ID in Xcode › Settings › Accounts). This keeps the microphone permission
+  between builds.
+- The app and the extension share one version number, set in `extension/manifest.json`.
+- The website is in `site/` and is published to GitHub Pages when `main` changes.
+- Without the Mac app (for example on Linux), `node server/server.mjs` runs the same
+  local server. It needs Node 18 or later.
 
-The extension version is the app version: bump `extension/manifest.json` and rebuild. The
-app carries the extension, and installed copies reload themselves when the app ships a
-newer one.
+<details>
+<summary>How it works</summary>
 
-**Without the app** (Linux, or working on the compiler): `node server/server.mjs` serves
-the same API from a terminal (Node 18+, no dependencies) and writes sessions to
-`sessions/` in this repo.
+```
+browser tab
+ ├── app.js       the toolbar and drawing, reads the page and React's component names
+ └── bridge.js    passes messages between the page and the extension
+        │
+   background.js  keeps the session, takes screenshots, sends it all on Done
+        │
+   Pointy.app     127.0.0.1:7777: turns speech into text, saves the session,
+                  writes BRIEF.md (using server/brief.cjs)
+```
 
-**Store listing.** If the extension is ever listed in the Chrome Web Store or Edge
-Add-ons, put its IDs in `ExtensionInstaller.storeIDs` and the app's **Install** becomes
-one click, with the store doing the updates.
+`app.js` runs inside the page itself because that is the only place it can read
+React's component names. Code running there can't use the extension's APIs, so
+`bridge.js` passes messages back and forth.
 
-The website is `site/`: one self-contained page, deployed to GitHub Pages on every push
-to `main`.
+</details>
 
 ## Contributing
 
-Issues and pull requests are welcome. For anything bigger than a fix, open an issue
-first so we can talk it through.
+Issues and pull requests are welcome. For a bigger change, open an issue first.
+
+To report a security problem, see [SECURITY.md](.github/SECURITY.md).
 
 ## Licence
 
