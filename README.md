@@ -114,7 +114,9 @@ costs about 5,000 tokens.
 
 ## Privacy
 
-- Nothing leaves your Mac. The extension only talks to the app on `127.0.0.1:7777`.
+- Nothing leaves your Mac. The extension only talks to the app on `127.0.0.1:7777`, and
+  the app answers only browser extensions: a website you visit can't reach it (that
+  would otherwise let a page switch the microphone on and read the transcript).
 - With **Apple Speech** or **Apple Dictation** selected (the default on macOS 26), speech is
   transcribed on-device. **Browser speech**, the fallback, uses your browser's
   recognition service, which for Chrome means Google's servers.

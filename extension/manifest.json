@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Pointy",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Draw on your site and talk. It compiles into a brief a coding agent can execute.",
   "permissions": ["activeTab", "scripting", "tabs", "storage"],
   "host_permissions": [

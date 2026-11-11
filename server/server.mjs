@@ -23,12 +23,14 @@ const { compile } = createRequire(import.meta.url)("./brief.cjs");
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "..");
 const SESSIONS = path.join(ROOT, "sessions");
-const PORT = Number(process.env.UI_NOTES_PORT || 7777);
+const PORT = Number(process.env.POINTY_PORT || 7777);
 
 /* ----------------------------------------------------------------- writing */
 
 function writeSession(bundle) {
-  const dir = path.join(SESSIONS, bundle.id);
+  // The id becomes a folder name; keep it to the timestamp alphabet (as the app does).
+  const id = /^[A-Za-z0-9_-]{1,64}$/.test(bundle.id || "") ? bundle.id : new Date().toISOString().replace(/[:.]/g, "");
+  const dir = path.join(SESSIONS, id);
   fs.mkdirSync(dir, { recursive: true });
 
   for (const [name, dataUrl] of Object.entries(bundle.shots || {})) {
@@ -49,8 +51,8 @@ function writeSession(bundle) {
      every session after 2026-09-12. */
   const link = path.join(SESSIONS, "latest");
   try { fs.unlinkSync(link); } catch {}
-  try { fs.symlinkSync(bundle.id, link, "dir"); } catch (e) {
-    console.error(`  ! could not point sessions/latest at ${bundle.id}: ${e.message}`);
+  try { fs.symlinkSync(id, link, "dir"); } catch (e) {
+    console.error(`  ! could not point sessions/latest at ${id}: ${e.message}`);
   }
   return { dir, brief };
 }
@@ -72,13 +74,27 @@ function toClipboard(text) {
 
 /* ------------------------------------------------------------------ server */
 
-const CORS = {
-  "access-control-allow-origin": "*",
-  "access-control-allow-methods": "GET,POST,OPTIONS",
-  "access-control-allow-headers": "content-type",
-};
+/* Only the extension may call this server. Any website you visit can send
+   requests to localhost; browsers always attach an Origin a page cannot forge,
+   so serve only requests with no Origin (local tools) or an extension's. The
+   Host check stops DNS rebinding. Same rule as the app (HostServer.swift). */
+const EXTENSION = /^(chrome-extension|moz-extension|safari-web-extension):\/\//;
+function allowed(req) {
+  const host = (req.headers.host || "").split(":")[0].toLowerCase();
+  if (host !== "127.0.0.1" && host !== "localhost") return false;
+  const origin = req.headers.origin;   // "null" comes from sandboxed frames: refused
+  return origin === undefined || EXTENSION.test(origin);
+}
 
 const server = http.createServer((req, res) => {
+  if (!allowed(req)) {
+    res.writeHead(403, { "content-type": "application/json" });
+    return res.end(JSON.stringify({ ok: false, error: "only the Pointy extension can use this server" }));
+  }
+  const CORS = req.headers.origin
+    ? { "access-control-allow-origin": req.headers.origin, vary: "Origin",
+        "access-control-allow-methods": "GET,POST,OPTIONS", "access-control-allow-headers": "content-type" }
+    : {};
   if (req.method === "OPTIONS") { res.writeHead(204, CORS); return res.end(); }
 
   if (req.url === "/ping") {
